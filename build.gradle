@@ -1,0 +1,31 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+  implementation files('libs/1.19.4-deob.jar')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+}
+
+jar {
+  manifest {
+    attributes(
+      'Main-Class': 'mapgen.Main'
+    )
+  }
+}
+
+application {
+    mainClass = 'mapgen.Main'
+}
