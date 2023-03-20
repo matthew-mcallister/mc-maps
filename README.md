@@ -2,6 +2,33 @@
 
 Software to generate, modify, and export minecraft maps offline.
 
+## Building
+
+To compile the program, you will have to obtain the deobfuscated
+Minecraft `1.19.4.jar` and the Mojang libraries distributed alongside
+it.
+
+First, create a `libs` directory in this repository (`mkdir ./libs`).
+Either copy or symlink the following files from Minecraft into this
+dir:
+
+```
+authlib-3.18.38.jar
+brigadier-1.0.18.jar
+datafixerupper-6.0.6.jar
+logging-1.1.1.jar
+```
+
+Now, download the deobfuscation mappings from the link provided in the
+`downloads` section of the `1.19.4.json` file in the `versions` dir.
+Use any of the various deobfuscation tools to create the deobfuscated
+JAR and name it `1.19.4-deob.jar`. Finally, copy or link
+`1.19.4-deob.jar` into `libs`.
+
+Then just run `./gradlew build` to compile a runnable JAR.
+
+TODO: Make everything version-agnostic.
+
 # Copyright
 
 Copyright (C) 2023 Matthew McAllister
