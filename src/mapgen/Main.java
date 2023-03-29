@@ -244,7 +244,8 @@ public class Main {
             // Give enough time for server to init
             Thread.sleep(1000);
             var level = server.overworld();
-            Main.generateChunks(level, 0, 0, 0, 16, 16, 16);
+            int offset = 0;
+            Main.generateChunks(level, offset, offset, offset, offset + 16, offset + 16, offset + 16);
         } catch (Exception var38) {
             LOGGER.error(LogUtils.FATAL_MARKER, "Failed to start the minecraft server", var38);
         }
@@ -261,9 +262,12 @@ public class Main {
                     // Either worldgen is busted or I'm somehow getting
                     // un-generated blocks.
                     var chunkSource = level.getChunkSource();
-                    var chunk = chunkSource.getChunk(x / 16, z / 16, false);
+                    int chunkx = x / 16 + (x % 16 - 15) / 16;
+                    int chunkz = z / 16 + (z % 16 - 15) / 16;
+                    var chunk = chunkSource.getChunk(chunkx, chunkz, true);
                     if (chunk == null) {
-                        throw new Exception("chunk is null at block: " + x + "," + y + "," + z);
+                        // Grraaahhh why does this keep happening?
+                        throw new Exception("chunk is null: " + chunkx + "," + chunkz);
                     }
                     var blockState = chunk.getBlockState(new BlockPos(x, 64, z));
                     var block = blockState.getBlock();
