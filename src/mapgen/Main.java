@@ -28,8 +28,10 @@ import net.minecraft.DefaultUncaughtExceptionHandler;
 import net.minecraft.SharedConstants;
 import net.minecraft.Util;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
@@ -39,6 +41,8 @@ import net.minecraft.server.*;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.server.dedicated.DedicatedServerSettings;
+import net.minecraft.server.level.ServerChunkCache;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.LoggerChunkProgressListener;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.repository.ServerPacksSource;
@@ -51,6 +55,9 @@ import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
@@ -157,10 +164,10 @@ public class Main {
 
             PackRepository $$31 = ServerPacksSource.createPackRepository($$28.getLevelPath(LevelResource.DATAPACK_DIR));
 
-            WorldStem $$33;
+            WorldStem worldStem;
             try {
                 WorldLoader.InitConfig $$32 = loadOrCreateConfig($$21.getProperties(), $$28, $$30, $$31);
-                $$33 = (WorldStem) Util.blockUntilDone(($$6x) -> WorldLoader.load($$32, ($$5x) -> {
+                worldStem = (WorldStem) Util.blockUntilDone(($$6x) -> WorldLoader.load($$32, ($$5x) -> {
                     Registry $$96 = $$5x.datapackDimensions().registryOrThrow(Registries.LEVEL_STEM);
                     DynamicOps $$95 = RegistryOps.create(NbtOps.INSTANCE, $$5x.datapackWorldgen());
                     Pair $$94 = $$28.getDataTag($$95, $$5x.dataConfiguration(), $$96,
@@ -202,16 +209,16 @@ public class Main {
                 return;
             }
 
-            RegistryAccess.Frozen $$36 = $$33.registries().compositeAccess();
+            RegistryAccess.Frozen $$36 = worldStem.registries().compositeAccess();
             if (optionSet.has($$6)) {
                 forceUpgrade($$28, DataFixers.getDataFixer(), optionSet.has(eraseCache), () -> true,
                         $$36.registryOrThrow(Registries.LEVEL_STEM));
             }
 
-            WorldData $$37 = $$33.worldData();
+            WorldData $$37 = worldStem.worldData();
             $$28.saveDataTag($$36, $$37);
-            final DedicatedServer $$38 = (DedicatedServer) MinecraftServer.spin(($$12x) -> {
-                DedicatedServer dedicatedServer = new DedicatedServer($$12x, $$28, $$31, $$33, $$21,
+            final DedicatedServer server = (DedicatedServer) MinecraftServer.spin(($$12x) -> {
+                DedicatedServer dedicatedServer = new DedicatedServer($$12x, $$28, $$31, worldStem, $$21,
                         DataFixers.getDataFixer(),
                         $$25, LoggerChunkProgressListener::new);
                 dedicatedServer.setSingleplayerProfile(
@@ -228,15 +235,44 @@ public class Main {
             });
             Thread $$39 = new Thread("Server Shutdown Thread") {
                 public void run() {
-                    $$38.halt(true);
+                    server.halt(true);
                 }
             };
             $$39.setUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler(LOGGER));
             Runtime.getRuntime().addShutdownHook($$39);
+
+            // Give enough time for server to init
+            Thread.sleep(1000);
+            var level = server.overworld();
+            Main.generateChunks(level, 0, 0, 0, 16, 16, 16);
         } catch (Exception var38) {
             LOGGER.error(LogUtils.FATAL_MARKER, "Failed to start the minecraft server", var38);
         }
+    }
 
+    private static void generateChunks(ServerLevel level, int minx, int miny, int minz, int maxx, int maxy, int maxz)
+            throws Exception {
+        assert level != null;
+        for (int y = miny; y < maxy; y++) {
+            System.out.printf("y = %s%n", y);
+            for (int x = minx; x < maxx; x++) {
+                for (int z = minz; z < maxz; z++) {
+                    // TODO: Ahhh WTF why are all the blocks air?
+                    // Either worldgen is busted or I'm somehow getting
+                    // un-generated blocks.
+                    var chunkSource = level.getChunkSource();
+                    var chunk = chunkSource.getChunk(x / 16, z / 16, false);
+                    if (chunk == null) {
+                        throw new Exception("chunk is null at block: " + x + "," + y + "," + z);
+                    }
+                    var blockState = chunk.getBlockState(new BlockPos(x, 64, z));
+                    var block = blockState.getBlock();
+                    var key = BuiltInRegistries.BLOCK.getKey(block);
+                    System.out.printf("%s,", key.getPath());
+                }
+                System.out.println();
+            }
+        }
     }
 
     private static void writePidFile(Path $$0) {
