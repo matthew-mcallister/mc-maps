@@ -31,15 +31,17 @@ public class Superchunk {
         for (int x = minx; x < maxx; x++) {
             for (int z = minz; z < maxz; z++) {
                 for (int y = miny; y < maxy; y++) {
-                    // TODO: Switch to getBlockStates?
                     var blockState = level.getBlockState(new BlockPos(x, y, z));
                     var block = blockState.getBlock();
                     var key = BuiltInRegistries.BLOCK.getKey(block);
                     this.blockIds[x - minx][y - Superchunk.MIN_Y][z - minz] = map.getId(key);
                 }
             }
-            System.out.printf("%f%%%n", 100.0 * (float)(x - minx) / Superchunk.LENGTH);
+            if (x % 32 == 0) {
+                System.out.printf("%d,%d: %f%%%n", cx, cz, 100.0 * (float)(x - minx) / Superchunk.LENGTH);
+            }
         }
+        System.out.printf("Finished superchunk %d, %d%n", cx, cz);
     }
 
     public void serialize(OutputStream output) throws IOException {

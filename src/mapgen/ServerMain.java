@@ -70,6 +70,7 @@ public class ServerMain {
     public static DedicatedServer startServer(String[] $$0) throws Exception {
         LOGGER.debug("Launching app");
 
+        // TODO: Make these parameters to the function and not cmd line params
         SharedConstants.tryDetectVersion();
         OptionParser optionParser = new OptionParser();
         OptionSpec noGui = optionParser.accepts("nogui");
